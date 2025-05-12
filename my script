@@ -70,14 +70,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Anti-Noclip Helper Function
-local function isValidPosition(pos)
-	local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
-	local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
-	return #parts == 0  -- Ensure no parts are touching the position
-end
-
--- Underground teleport loop with floating and spazzing movement (with anti-exploit)
+-- Underground teleport loop (prevents ragdoll, keeps player underground)
 task.spawn(function()
 	while isRunning do
 		task.wait(0.2)
@@ -88,22 +81,10 @@ task.spawn(function()
 		if hrp then
 			local currentPos = hrp.Position
 			local rot = hrp.CFrame - hrp.Position
+			local targetCFrame = CFrame.new(currentPos.X, currentPos.Y - 7, currentPos.Z) * rot
 
-			-- Randomize position (floating effect)
-			local floatYOffset = math.random(-7, -4)  -- Random Y offset between -4 and -7 for floating
-			local randomX = math.random(-3, 3)         -- Random horizontal offset
-			local randomZ = math.random(-3, 3)         -- Random horizontal offset
-
-			-- Apply randomized floating and movement (spazzing effect)
-			local targetPos = currentPos + Vector3.new(randomX, floatYOffset, randomZ)
-
-			-- Check if target position is valid and avoid teleporting to invalid places (Anti-Noclip)
-			if isValidPosition(targetPos) then
-				local targetCFrame = CFrame.new(targetPos) * rot
-
-				-- Apply smooth teleportation (Anti-Teleport/Fly protection)
-				chr:PivotTo(targetCFrame)
-			end
+			-- Use PivotTo to move character underground without ragdoll
+			chr:PivotTo(targetCFrame)
 		end
 	end
 end)
