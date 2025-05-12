@@ -71,8 +71,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Underground teleport loop with incremental movement
+-- Function to check if a position is valid and underground
+local function isValidUndergroundPosition(pos)
+	local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
+	local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
+	return #parts == 0  -- Ensure no parts are touching the position
+end
+
+-- Underground teleport loop with incremental movement and smooth positioning
 task.spawn(function()
+	local lastPos = Vector3.new()  -- Initial last position
+
 	while isRunning do
 		task.wait(0.2)
 
@@ -85,14 +94,18 @@ task.spawn(function()
 			local rot = hrp.CFrame - hrp.Position
 
 			-- Make sure the character stays at least 7 studs below the surface
-			local undergroundHeight = -7 -- You can adjust this value to control the depth below the ground
-			local targetPos = Vector3.new(currentPos.X, math.min(currentPos.Y, undergroundHeight), currentPos.Z)
+			local undergroundHeight = -7  -- You can adjust this value to control the depth below the ground
+			local targetPos = Vector3.new(currentPos.X, undergroundHeight, currentPos.Z)
 
-			-- Apply the underground position (keep character 7 studs below ground)
-			local targetCFrame = CFrame.new(targetPos.X, targetPos.Y, targetPos.Z) * rot
+			-- Apply small incremental movement to prevent the "flying" effect
+			local moveIncrement = Vector3.new(math.random(-0.5, 0.5), 0, math.random(-0.5, 0.5))  -- Small random offsets for natural movement
+			local newPos = targetPos + moveIncrement
 
-			-- Use PivotTo to move character underground without ragdoll
-			chr:PivotTo(targetCFrame)
+			-- Validate the position to ensure it's underground
+			if isValidUndergroundPosition(newPos) then
+				-- Apply the new position smoothly
+				chr:PivotTo(CFrame.new(newPos))
+			end
 		end
 	end
 end)
