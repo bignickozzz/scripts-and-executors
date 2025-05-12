@@ -1,7 +1,6 @@
--- Anti-Finish / Continuous Underground Bypass with UI and Rotation
+-- Anti-Finish / Continuous Underground Bypass with UI and Exit Button
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
@@ -14,20 +13,30 @@ screenGui.ResetOnSpawn = false
 screenGui.Enabled = false -- Hidden at start
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.5, -100, 0.5, -25)
+frame.Size = UDim2.new(0, 220, 0, 60)
+frame.Position = UDim2.new(0.5, -110, 0.5, -30)
 frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 frame.Parent = screenGui
 
+-- Toggle Button
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 180, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 5)
+toggleButton.Size = UDim2.new(0, 160, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
 toggleButton.Text = "Underground: Disabled"
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 toggleButton.Parent = frame
 
--- Enable toggle
+-- X Button to stop script
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+closeButton.Parent = frame
+
+-- Toggle logic
 local isEnabled = false
 toggleButton.MouseButton1Click:Connect(function()
 	isEnabled = not isEnabled
@@ -42,11 +51,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Underground Loop
-task.spawn(function()
-	while true do
-		task.wait(0.2)
+-- Underground loop (controlled by a flag so it can be stopped)
+local runLoop = true
 
+task.spawn(function()
+	while runLoop do
+		task.wait(0.2)
 		if not isEnabled then continue end
 		if hum.Health > 25 then continue end
 
@@ -59,7 +69,13 @@ task.spawn(function()
 	end
 end)
 
--- Auto-reset if character respawns
+-- Stop script on X button press
+closeButton.MouseButton1Click:Connect(function()
+	runLoop = false
+	screenGui:Destroy()
+end)
+
+-- Reset character handling
 lp.CharacterAdded:Connect(function(newChar)
 	chr = newChar
 	hum = chr:WaitForChild("Humanoid")
