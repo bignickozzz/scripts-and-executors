@@ -100,7 +100,7 @@ local function isValidPosition(pos)
 	return #parts == 0  -- Ensure no parts are touching the position
 end
 
--- Underground teleport loop with ragdoll-like floating and spazzing movement (with anti-exploit)
+-- Underground teleport loop with enhanced ragdoll-like floating and spazzing movement (with anti-exploit)
 task.spawn(function()
 	local lastPos = hrp.Position
 	while isRunning do
@@ -112,15 +112,14 @@ task.spawn(function()
 
 		-- Detect movement (if player moved more than 0.5 studs)
 		if (currentPos - lastPos).Magnitude > 0.5 then
-			addXP(1)  -- Add 1 XP on each movement
 			lastPos = currentPos
 		end
 
-		-- Apply ragdoll-like floating and spazzing movement
-		local floatYOffset = math.random(-7, -4)  -- Random Y offset between -4 and -7 for floating
-		local randomX = math.random(-3, 3)         -- Random horizontal offset for ragdoll-like movement
-		local randomY = math.random(-1, 1)         -- Random up and down movement to simulate ragdoll effect
-		local randomZ = math.random(-3, 3)         -- Random horizontal offset for ragdoll-like movement
+		-- Apply ragdoll-like floating and spazzing movement (random motion)
+		local floatYOffset = math.random(-10, -7)  -- More extreme floating (underground)
+		local randomX = math.random(-5, 5)         -- Random horizontal offset for ragdoll-like movement
+		local randomY = math.random(-2, 2)         -- Random up and down movement to simulate ragdoll effect
+		local randomZ = math.random(-5, 5)         -- Random horizontal offset for ragdoll-like movement
 
 		-- Apply randomized floating and movement (spazzing effect)
 		local targetPos = currentPos + Vector3.new(randomX, floatYOffset + randomY, randomZ)
@@ -133,9 +132,16 @@ task.spawn(function()
 			-- Apply smooth teleportation (Anti-Teleport/Fly protection)
 			chr:PivotTo(targetCFrame)
 		end
+
+		-- Add random rotations to enhance the ragdoll effect (spazzing)
+		local randomRotation = math.random(1, 10)
+		hrp.CFrame = hrp.CFrame * CFrame.Angles(
+			math.rad(randomRotation),
+			math.rad(randomRotation),
+			math.rad(randomRotation)
+		)
 	end
 end)
-
 -- Character reset handler
 lp.CharacterAdded:Connect(function(newChar)
 	chr = newChar
