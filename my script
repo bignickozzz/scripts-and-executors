@@ -10,7 +10,7 @@ screenGui.Name = "AntiFinishUI"
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.5, -100, 0.5, -25) -- Centered on screen
+frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 frame.Parent = screenGui
 
@@ -81,25 +81,5 @@ end)
 frame.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = false
-    end
-end)
-
--- Keybind: Press "M" to toggle the UI and soft underground
-local userInputService = game:GetService("UserInputService")
-
-userInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-
-    -- Check if the key pressed is "M"
-    if input.KeyCode == Enum.KeyCode.M then
-        -- Toggle the soft underground feature
-        isEnabled = not isEnabled
-        if isEnabled then
-            toggleButton.Text = "Enable Soft Underground"
-            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        else
-            toggleButton.Text = "Disable Soft Underground"
-            toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-        end
     end
 end)
