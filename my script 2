@@ -1,20 +1,17 @@
 -- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-
+local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 
 -- Flags
-local isSkyEnabled = false
 local isAimbotEnabled = false
-local isRunning = true
 local lockedTarget = nil
+local aimCircle = nil
+local isShooting = false
 
 -- UI Setup
 local screenGui = Instance.new("ScreenGui")
@@ -45,17 +42,6 @@ titleLabel.Text = "BIGNICKOZZZ SCRIPT"
 titleLabel.TextScaled = true
 titleLabel.Parent = frame
 
--- Sky Mode Button
-local skyButton = Instance.new("TextButton")
-skyButton.Size = UDim2.new(0, 250, 0, 40)
-skyButton.Position = UDim2.new(0, 25, 0, 40)
-skyButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-skyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-skyButton.Font = Enum.Font.SourceSansBold
-skyButton.TextSize = 16
-skyButton.Text = "Sky Mode: Disabled"
-skyButton.Parent = frame
-
 -- Aimbot Button
 local aimbotButton = Instance.new("TextButton")
 aimbotButton.Size = UDim2.new(0, 250, 0, 40)
@@ -78,24 +64,6 @@ closeButton.TextSize = 16
 closeButton.Text = "X"
 closeButton.Parent = frame
 
--- Back Button
-local backButton = Instance.new("TextButton")
-backButton.Size = UDim2.new(0, 250, 0, 40)
-backButton.Position = UDim2.new(0, 25, 0, 140)
-backButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-backButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-backButton.Font = Enum.Font.SourceSansBold
-backButton.TextSize = 16
-backButton.Text = "Go Back"
-backButton.Parent = frame
-
--- Sky Mode Button Functionality
-skyButton.MouseButton1Click:Connect(function()
-	isSkyEnabled = not isSkyEnabled
-	skyButton.Text = isSkyEnabled and "Sky Mode: Enabled" or "Sky Mode: Disabled"
-	skyButton.BackgroundColor3 = isSkyEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
-end)
-
 -- Aimbot Button Functionality
 aimbotButton.MouseButton1Click:Connect(function()
 	isAimbotEnabled = not isAimbotEnabled
@@ -105,15 +73,7 @@ end)
 
 -- Close Button Functionality
 closeButton.MouseButton1Click:Connect(function()
-	isRunning = false
 	screenGui:Destroy()
-end)
-
--- Back Button Functionality
-backButton.MouseButton1Click:Connect(function()
-	-- You can define functionality when you want to "go back" here
-	print("Back button pressed!")
-	-- For now, this will just print a message
 end)
 
 -- Toggle UI Visibility with M key
@@ -123,54 +83,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Function to check if a position is valid and in the sky (avoid objects and other players)
-local function isValidSkyPosition(pos)
-	local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
-	local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
-	return #parts == 0  -- Ensure no parts are touching the position
-end
-
--- Sky teleport loop with random movement in the air
-task.spawn(function()
-	local lastPos = Vector3.new()  -- Initial last position
-
-	while isRunning do
-		task.wait(0.2)
-
-		-- Only execute if Sky mode is enabled and health is below 25
-		if not isSkyEnabled or not hum or hum.Health > 25 then continue end
-
-		local hrp = chr:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local currentPos = hrp.Position
-			local rot = hrp.CFrame - hrp.Position
-
-			-- Sky height - position the character high in the air (adjustable)
-			local skyHeight = 10  -- Keeping the character 10 studs above the ground
-			local targetPos = Vector3.new(currentPos.X, skyHeight, currentPos.Z)
-
-			-- Apply small random increments to make spazzing movements in the sky
-			local moveIncrement = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))  -- Small random movements for X and Z axes
-			local newPos = targetPos + moveIncrement
-
-			-- Check if the position is valid in the sky (no collision with parts)
-			if isValidSkyPosition(newPos) then
-				-- Apply smooth movement to the new position in the sky
-				chr:PivotTo(CFrame.new(newPos))
-			end
-		end
-	end
-end)
-
 -- Aimbot Logic (Lock onto player's head)
 task.spawn(function()
-	local aimCircle = nil
-
-	while isRunning do
+	while true do
 		task.wait(0.1)
 
-		-- Aimbot function (locks on to the closest enemy player's head)
 		if isAimbotEnabled then
+			-- Find the nearest player to lock onto
 			local closestTarget = nil
 			local shortestDistance = math.huge
 			for _, player in pairs(Players:GetPlayers()) do
@@ -186,10 +105,10 @@ task.spawn(function()
 			end
 
 			if closestTarget then
-				-- Lock on to the closest player's head
+				-- Lock onto the closest player's head
 				local head = closestTarget.Character:FindFirstChild("Head")
 				if head then
-					-- Show a purple circle on their head
+					-- Show a purple circle above the target's head to indicate lock-on
 					if not aimCircle then
 						aimCircle = Instance.new("Part")
 						aimCircle.Shape = Enum.PartType.Ball
@@ -199,28 +118,45 @@ task.spawn(function()
 						aimCircle.CanCollide = false
 						aimCircle.Parent = Workspace
 					end
-					
+
 					aimCircle.Position = head.Position + Vector3.new(0, 1, 0)  -- Slightly above the head
 
-					-- Aim at the locked target's head
-					chr:LookAt(head.Position)
+					-- Store the locked target
+					lockedTarget = closestTarget
 				end
 			end
 		end
 	end
 end)
 
--- Firing Mechanism (When RMB is pressed)
+-- Left Mouse Button (LMB) to manually shoot towards the locked target
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+		-- When Left Mouse Button (LMB) is pressed, shoot towards the locked target's head
+		if lockedTarget and lockedTarget.Character and lockedTarget.Character:FindFirstChild("Head") then
+			local targetHead = lockedTarget.Character.Head
+			-- Shoot towards the locked target's head
+			local ray = Ray.new(chr.HumanoidRootPart.Position, (targetHead.Position - chr.HumanoidRootPart.Position).unit * 500)
+			local hitPart, hitPosition = Workspace:FindPartOnRay(ray, chr)
+
+			if hitPart and hitPart.Parent == lockedTarget.Character then
+				-- Successfully hit the locked target's head, simulate gunshot hit
+				print("Shot fired at target head!")
+				-- You can add a shooting effect here (e.g., particle effects or damage logic)
+			end
+		end
+	end
+end)
+
+-- Right Mouse Button (RMB) to lock onto the target without shooting
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton2 then
-		if lockedTarget then
-			local targetHead = lockedTarget.Character:FindFirstChild("Head")
-			if targetHead then
-				-- Fire a shot to the target's head
-				local direction = (targetHead.Position - chr.HumanoidRootPart.Position).unit
-				-- Add shooting logic here (e.g., creating a projectile or raycasting)
-				print("Fired at target head!")
-			end
+		-- When RMB is pressed, lock on to the target's head (this doesn't fire)
+		if lockedTarget and lockedTarget.Character and lockedTarget.Character:FindFirstChild("Head") then
+			local targetHead = lockedTarget.Character.Head
+			-- Aim at the locked target's head
+			chr:LookAt(targetHead.Position)
+			print("Locked onto target's head")
 		end
 	end
 end)
