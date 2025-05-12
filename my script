@@ -70,21 +70,31 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Underground loop
+-- Underground teleport (safe single teleport with :PivotTo)
 task.spawn(function()
+	local lastTeleported = false
+
 	while isRunning do
-		task.wait(0.2)
+		task.wait(0.3)
 
-		if not isEnabled or not hum or hum.Health > 25 then continue end
+		if not isEnabled or not hum or hum.Health > 25 then
+			lastTeleported = false
+			continue
+		end
 
-		local hrp = chr:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local pos = hrp.Position
-			local rot = hrp.CFrame - hrp.Position
-			hrp.CFrame = CFrame.new(pos.X, pos.Y - 7, pos.Z) * rot
+		if not lastTeleported then
+			local hrp = chr:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local currentPos = hrp.Position
+				local rot = hrp.CFrame - hrp.Position
+				local targetCFrame = CFrame.new(currentPos.X, currentPos.Y - 7, currentPos.Z) * rot
+				chr:PivotTo(targetCFrame)
+				lastTeleported = true
+			end
 		end
 	end
 end)
+
 
 -- Character reset handler
 lp.CharacterAdded:Connect(function(newChar)
