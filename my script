@@ -1,82 +1,105 @@
--- Anti-Finish / Continuous Underground Bypass with UI and Exit Button
+-- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
-local lp = Players.LocalPlayer
-local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
+-- Player and character references
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 
--- UI Setup
-local screenGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+-- Flags
+local isEnabled = false
+local scriptRunning = true
+local guiVisible = true
+
+-- Create UI
+local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "UndergroundBypassUI"
 screenGui.ResetOnSpawn = false
-screenGui.Enabled = false -- Hidden at start
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- Main Frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 60)
-frame.Position = UDim2.new(0.5, -110, 0.5, -30)
-frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 240, 0, 60)
+frame.Position = UDim2.new(0.5, -120, 0.5, -30)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
 frame.Parent = screenGui
 
 -- Toggle Button
 local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
 toggleButton.Size = UDim2.new(0, 160, 0, 40)
 toggleButton.Position = UDim2.new(0, 10, 0, 10)
-toggleButton.Text = "Underground: Disabled"
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 16
+toggleButton.Text = "Underground: Disabled"
 toggleButton.Parent = frame
 
--- X Button to stop script
+-- Close Button
 local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 30, 0, 30)
 closeButton.Position = UDim2.new(1, -35, 0, 5)
-closeButton.Text = "X"
-closeButton.TextColor3 = Color3.new(1, 1, 1)
 closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 18
+closeButton.Text = "X"
 closeButton.Parent = frame
 
--- Toggle logic
-local isEnabled = false
+-- Toggle Button Logic
 toggleButton.MouseButton1Click:Connect(function()
 	isEnabled = not isEnabled
-	toggleButton.Text = isEnabled and "Underground: Enabled" or "Underground: Disabled"
-	toggleButton.BackgroundColor3 = isEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
-end)
-
--- UI toggle with "M"
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.KeyCode == Enum.KeyCode.M then
-		screenGui.Enabled = not screenGui.Enabled
+	if isEnabled then
+		toggleButton.Text = "Underground: Enabled"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+	else
+		toggleButton.Text = "Underground: Disabled"
+		toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 	end
 end)
 
--- Underground loop (controlled by a flag so it can be stopped)
-local runLoop = true
+-- Close Button Logic
+closeButton.MouseButton1Click:Connect(function()
+	scriptRunning = false
+	screenGui:Destroy()
+end)
 
+-- "M" Key toggles GUI visibility
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.M then
+		guiVisible = not guiVisible
+		screenGui.Enabled = guiVisible
+	end
+end)
+
+-- Underground loop logic
 task.spawn(function()
-	while runLoop do
+	while scriptRunning do
 		task.wait(0.2)
-		if not isEnabled then continue end
-		if hum.Health > 25 then continue end
 
-		local hrp = chr:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local pos = hrp.Position
-			local rot = hrp.CFrame.Rotation
-			hrp.CFrame = CFrame.new(pos.X, pos.Y - 3.5, pos.Z) * rot
+		if not isEnabled then continue end
+		if humanoid and humanoid.Health <= 25 then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local pos = hrp.Position
+				local rot = hrp.CFrame - hrp.Position
+				hrp.CFrame = CFrame.new(pos.X, pos.Y - 3.5, pos.Z) * rot
+			end
 		end
 	end
 end)
 
--- Stop script on X button press
-closeButton.MouseButton1Click:Connect(function()
-	runLoop = false
-	screenGui:Destroy()
-end)
-
--- Reset character handling
-lp.CharacterAdded:Connect(function(newChar)
-	chr = newChar
-	hum = chr:WaitForChild("Humanoid")
+-- Update character and humanoid on respawn
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	humanoid = newChar:WaitForChild("Humanoid")
 end)
