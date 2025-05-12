@@ -1,0 +1,200 @@
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local lp = Players.LocalPlayer
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
+
+-- Flags
+local isSkyEnabled = false
+local isAimbotEnabled = false
+local isRunning = true
+
+-- UI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BIGNICKOZZZ_ScriptUI"
+screenGui.ResetOnSpawn = false
+screenGui.Enabled = false
+screenGui.Parent = lp:WaitForChild("PlayerGui")
+
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 180)
+frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+-- Title Text
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0, 300, 0, 30)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.Text = "BIGNICKOZZZ SCRIPT"
+titleLabel.TextScaled = true
+titleLabel.Parent = frame
+
+-- Sky Mode Button
+local skyButton = Instance.new("TextButton")
+skyButton.Size = UDim2.new(0, 250, 0, 40)
+skyButton.Position = UDim2.new(0, 25, 0, 40)
+skyButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+skyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+skyButton.Font = Enum.Font.SourceSansBold
+skyButton.TextSize = 16
+skyButton.Text = "Sky Mode: Disabled"
+skyButton.Parent = frame
+
+-- Aimbot Button
+local aimbotButton = Instance.new("TextButton")
+aimbotButton.Size = UDim2.new(0, 250, 0, 40)
+aimbotButton.Position = UDim2.new(0, 25, 0, 90)
+aimbotButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+aimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+aimbotButton.Font = Enum.Font.SourceSansBold
+aimbotButton.TextSize = 16
+aimbotButton.Text = "Aimbot: Disabled"
+aimbotButton.Parent = frame
+
+-- Close (X) Button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -30, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 16
+closeButton.Text = "X"
+closeButton.Parent = frame
+
+-- Back Button
+local backButton = Instance.new("TextButton")
+backButton.Size = UDim2.new(0, 250, 0, 40)
+backButton.Position = UDim2.new(0, 25, 0, 140)
+backButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+backButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+backButton.Font = Enum.Font.SourceSansBold
+backButton.TextSize = 16
+backButton.Text = "Go Back"
+backButton.Parent = frame
+
+-- Sky Mode Button Functionality
+skyButton.MouseButton1Click:Connect(function()
+	isSkyEnabled = not isSkyEnabled
+	skyButton.Text = isSkyEnabled and "Sky Mode: Enabled" or "Sky Mode: Disabled"
+	skyButton.BackgroundColor3 = isSkyEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
+end)
+
+-- Aimbot Button Functionality
+aimbotButton.MouseButton1Click:Connect(function()
+	isAimbotEnabled = not isAimbotEnabled
+	aimbotButton.Text = isAimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
+	aimbotButton.BackgroundColor3 = isAimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end)
+
+-- Close Button Functionality
+closeButton.MouseButton1Click:Connect(function()
+	isRunning = false
+	screenGui:Destroy()
+end)
+
+-- Back Button Functionality
+backButton.MouseButton1Click:Connect(function()
+	-- You can define functionality when you want to "go back" here
+	print("Back button pressed!")
+	-- For now, this will just print a message
+end)
+
+-- Toggle UI Visibility with M key
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.KeyCode == Enum.KeyCode.M then
+		screenGui.Enabled = not screenGui.Enabled
+	end
+end)
+
+-- Function to check if a position is valid and in the sky (avoid objects and other players)
+local function isValidSkyPosition(pos)
+	local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
+	local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
+	return #parts == 0  -- Ensure no parts are touching the position
+end
+
+-- Sky teleport loop with random movement in the air
+task.spawn(function()
+	local lastPos = Vector3.new()  -- Initial last position
+
+	while isRunning do
+		task.wait(0.2)
+
+		-- Only execute if Sky mode is enabled and health is below 25
+		if not isSkyEnabled or not hum or hum.Health > 25 then continue end
+
+		local hrp = chr:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local currentPos = hrp.Position
+			local rot = hrp.CFrame - hrp.Position
+
+			-- Sky height - position the character high in the air (adjustable)
+			local skyHeight = 10  -- Keeping the character 10 studs above the ground
+			local targetPos = Vector3.new(currentPos.X, skyHeight, currentPos.Z)
+
+			-- Apply small random increments to make spazzing movements in the sky
+			local moveIncrement = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))  -- Small random movements for X and Z axes
+			local newPos = targetPos + moveIncrement
+
+			-- Check if the position is valid in the sky (no collision with parts)
+			if isValidSkyPosition(newPos) then
+				-- Apply smooth movement to the new position in the sky
+				chr:PivotTo(CFrame.new(newPos))
+			end
+		end
+	end
+end)
+
+-- Aimbot Logic (Basic Example)
+task.spawn(function()
+	while isRunning do
+		task.wait(0.1)
+
+		-- Aimbot function (fires at the closest enemy if enabled)
+		if isAimbotEnabled then
+			local closestTarget = nil
+			local shortestDistance = math.huge
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+					local targetPos = player.Character.HumanoidRootPart.Position
+					local distance = (chr.HumanoidRootPart.Position - targetPos).Magnitude
+
+					if distance < shortestDistance then
+						closestTarget = player
+						shortestDistance = distance
+					end
+				end
+			end
+
+			if closestTarget then
+				-- Aim at the closest target (you can add additional logic to shoot)
+				local hrp = closestTarget.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local lookAtPos = hrp.Position
+					chr:LookAt(lookAtPos)
+				end
+			end
+		end
+	end
+end)
+
+-- Character reset handler
+lp.CharacterAdded:Connect(function(newChar)
+	chr = newChar
+	hum = chr:WaitForChild("Humanoid")
+end)
