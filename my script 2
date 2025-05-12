@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
@@ -13,6 +14,7 @@ local hum = chr:WaitForChild("Humanoid")
 local isSkyEnabled = false
 local isAimbotEnabled = false
 local isRunning = true
+local lockedTarget = nil
 
 -- UI Setup
 local screenGui = Instance.new("ScreenGui")
@@ -160,18 +162,20 @@ task.spawn(function()
 	end
 end)
 
--- Aimbot Logic (Basic Example)
+-- Aimbot Logic (Lock onto player's head)
 task.spawn(function()
+	local aimCircle = nil
+
 	while isRunning do
 		task.wait(0.1)
 
-		-- Aimbot function (fires at the closest enemy if enabled)
+		-- Aimbot function (locks on to the closest enemy player's head)
 		if isAimbotEnabled then
 			local closestTarget = nil
 			local shortestDistance = math.huge
 			for _, player in pairs(Players:GetPlayers()) do
-				if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-					local targetPos = player.Character.HumanoidRootPart.Position
+				if player ~= lp and player.Character and player.Character:FindFirstChild("Head") then
+					local targetPos = player.Character.Head.Position
 					local distance = (chr.HumanoidRootPart.Position - targetPos).Magnitude
 
 					if distance < shortestDistance then
@@ -182,12 +186,40 @@ task.spawn(function()
 			end
 
 			if closestTarget then
-				-- Aim at the closest target (you can add additional logic to shoot)
-				local hrp = closestTarget.Character:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local lookAtPos = hrp.Position
-					chr:LookAt(lookAtPos)
+				-- Lock on to the closest player's head
+				local head = closestTarget.Character:FindFirstChild("Head")
+				if head then
+					-- Show a purple circle on their head
+					if not aimCircle then
+						aimCircle = Instance.new("Part")
+						aimCircle.Shape = Enum.PartType.Ball
+						aimCircle.Size = Vector3.new(1, 1, 1)
+						aimCircle.Color = Color3.fromRGB(255, 0, 255)  -- Purple
+						aimCircle.Anchored = true
+						aimCircle.CanCollide = false
+						aimCircle.Parent = Workspace
+					end
+					
+					aimCircle.Position = head.Position + Vector3.new(0, 1, 0)  -- Slightly above the head
+
+					-- Aim at the locked target's head
+					chr:LookAt(head.Position)
 				end
+			end
+		end
+	end
+end)
+
+-- Firing Mechanism (When RMB is pressed)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton2 then
+		if lockedTarget then
+			local targetHead = lockedTarget.Character:FindFirstChild("Head")
+			if targetHead then
+				-- Fire a shot to the target's head
+				local direction = (targetHead.Position - chr.HumanoidRootPart.Position).unit
+				-- Add shooting logic here (e.g., creating a projectile or raycasting)
+				print("Fired at target head!")
 			end
 		end
 	end
