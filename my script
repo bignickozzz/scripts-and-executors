@@ -81,7 +81,7 @@ task.spawn(function()
 		if hrp then
 			local pos = hrp.Position
 			local rot = hrp.CFrame - hrp.Position
-			hrp.CFrame = CFrame.new(pos.X, pos.Y - 3.5, pos.Z) * rot
+			hrp.CFrame = CFrame.new(pos.X, pos.Y - 7, pos.Z) * rot
 		end
 	end
 end)
