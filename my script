@@ -14,7 +14,7 @@ local isRunning = true
 
 -- UI Setup
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UndergroundBypassUI"
+screenGui.Name = "SkyBypassUI"
 screenGui.ResetOnSpawn = false
 screenGui.Enabled = false
 screenGui.Parent = lp:WaitForChild("PlayerGui")
@@ -37,7 +37,7 @@ toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.Font = Enum.Font.SourceSansBold
 toggleButton.TextSize = 16
-toggleButton.Text = "Underground: Disabled"
+toggleButton.Text = "Sky: Disabled"
 toggleButton.Parent = frame
 
 -- Close (X) Button
@@ -54,7 +54,7 @@ closeButton.Parent = frame
 -- Toggle Button Function
 toggleButton.MouseButton1Click:Connect(function()
 	isEnabled = not isEnabled
-	toggleButton.Text = isEnabled and "Underground: Enabled" or "Underground: Disabled"
+	toggleButton.Text = isEnabled and "Sky: Enabled" or "Sky: Disabled"
 	toggleButton.BackgroundColor3 = isEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
 end)
 
@@ -71,21 +71,21 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Function to check if a position is valid and underground
-local function isValidUndergroundPosition(pos)
+-- Function to check if a position is valid and in the sky (avoid objects and other players)
+local function isValidSkyPosition(pos)
 	local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
 	local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
 	return #parts == 0  -- Ensure no parts are touching the position
 end
 
--- Underground teleport loop with incremental movement and smooth positioning
+-- Sky teleport loop with random movement in the air
 task.spawn(function()
 	local lastPos = Vector3.new()  -- Initial last position
 
 	while isRunning do
 		task.wait(0.2)
 
-		-- Only execute if Underground mode is enabled and health is below 25
+		-- Only execute if Sky mode is enabled and health is below 25
 		if not isEnabled or not hum or hum.Health > 25 then continue end
 
 		local hrp = chr:FindFirstChild("HumanoidRootPart")
@@ -93,17 +93,17 @@ task.spawn(function()
 			local currentPos = hrp.Position
 			local rot = hrp.CFrame - hrp.Position
 
-			-- Make sure the character stays at least 7 studs below the surface
-			local undergroundHeight = -7  -- You can adjust this value to control the depth below the ground
-			local targetPos = Vector3.new(currentPos.X, undergroundHeight, currentPos.Z)
+			-- Sky height - position the character high in the air (adjustable)
+			local skyHeight = 10  -- Keeping the character 10 studs above the ground
+			local targetPos = Vector3.new(currentPos.X, skyHeight, currentPos.Z)
 
-			-- Apply small incremental movement to prevent the "flying" effect
-			local moveIncrement = Vector3.new(math.random(-0.5, 0.5), 0, math.random(-0.5, 0.5))  -- Small random offsets for natural movement
+			-- Apply small random increments to make spazzing movements in the sky
+			local moveIncrement = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))  -- Small random movements for X and Z axes
 			local newPos = targetPos + moveIncrement
 
-			-- Validate the position to ensure it's underground
-			if isValidUndergroundPosition(newPos) then
-				-- Apply the new position smoothly
+			-- Check if the position is valid in the sky (no collision with parts)
+			if isValidSkyPosition(newPos) then
+				-- Apply smooth movement to the new position in the sky
 				chr:PivotTo(CFrame.new(newPos))
 			end
 		end
