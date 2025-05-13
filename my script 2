@@ -148,26 +148,47 @@ end
 -- Aimbot Logic
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 and aimbotEnabled then
-        lockedTarget = getClosestPlayer()
+        local closest, dist = nil, math.huge
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= lp and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+                local distanceToPlayer = (head.Position - chr.HumanoidRootPart.Position).Magnitude  -- Get distance to the player
+
+                -- Check if player is on-screen and within 15 studs
+                if onScreen and distanceToPlayer <= 15 then
+                    local mag = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                    if mag < dist then
+                        dist = mag
+                        closest = player
+                    end
+                end
+            end
+        end
+
+        if closest then
+            lockedTarget = closest.Character.Head  -- Lock the closest player's head
+            -- Set up visual marker
+            aimMarker.Position = lockedTarget.Position + Vector3.new(0, 0.1, 0)
+        end
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         lockedTarget = nil
-        aimMarker.Position = Vector3.new(0, -9999, 0)
+        aimMarker.Position = Vector3.new(0, -9999, 0)  -- Move the marker out of sight
     end
 end)
 
 RunService.RenderStepped:Connect(function()
-    if lockedTarget and lockedTarget.Parent then
+    if lockedTarget then
         local cam = Workspace.CurrentCamera
         local targetPos = lockedTarget.Position + Vector3.new(0, 0.1, 0)
-        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
-        aimMarker.Position = targetPos
+        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)  -- Aim the camera at the target
+        aimMarker.Position = targetPos  -- Update the visual marker position
     end
 end)
-
 -- Character Reset
 lp.CharacterAdded:Connect(function(newChar)
     chr = newChar
