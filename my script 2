@@ -161,13 +161,16 @@ end
 RunService.RenderStepped:Connect(function()
     if aimbotEnabled then
         local target = getClosestPlayer()
-        if target then
-            local cam = Workspace.CurrentCamera
-            local targetPos = target.Position + Vector3.new(0, 0.1, 0)
-            cam.CFrame = cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position, targetPos), 0.15)
-            if not espHighlight or espHighlight.Adornee ~= target.Parent then
-                removeHighlight()
-                espHighlight = createHighlight(target.Parent)
+        if target and target.Parent then
+            local head = target.Parent:FindFirstChild("Head")
+            if head then
+                local cam = Workspace.CurrentCamera
+                cam.CFrame = CFrame.new(cam.CFrame.Position, head.Position)
+
+                if not espHighlight or espHighlight.Adornee ~= target.Parent then
+                    removeHighlight()
+                    espHighlight = createHighlight(target.Parent)
+                end
             end
         else
             removeHighlight()
