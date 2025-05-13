@@ -177,6 +177,18 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+RunService.RenderStepped:Connect(function()
+    local stamina = player:FindFirstChild("Stamina") or player.Character and player.Character:FindFirstChild("Stamina")
+    if stamina and stamina:IsA("NumberValue") then
+        stamina.Value = stamina.MaxValue or 100
+    end
+end)
+
+
 -- Character Reset
 lp.CharacterAdded:Connect(function(newChar)
     chr = newChar
