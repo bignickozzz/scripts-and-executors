@@ -217,15 +217,21 @@ RunService.Heartbeat:Connect(function()
         local hrp = chr:FindFirstChild("HumanoidRootPart")
         if hrp then
             local basePos = hrp.Position
-            -- Add small random offset around 30 studs above
-            local jitter = Vector3.new(
-                math.random(-2, 2), 0, math.random(-2, 2)
-            )
-            local abovePos = basePos + Vector3.new(0, 30, 0) + jitter
-            chr:PivotTo(CFrame.new(abovePos))
+            -- Ensure the position is within the world bounds and 30 studs above
+            local abovePos = basePos + Vector3.new(0, 30, 0)
+            
+            -- Only teleport if the new position is above ground (valid position)
+            local region = Region3.new(abovePos - Vector3.new(1, 1, 1), abovePos + Vector3.new(1, 1, 1))
+            local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
+            
+            -- Avoid teleporting if the space is blocked
+            if #parts == 0 then
+                chr:PivotTo(CFrame.new(abovePos))
+            end
         end
     end
 end)
+
 
 
 -- ESP Setup
