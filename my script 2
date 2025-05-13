@@ -207,21 +207,13 @@ loadMainTab()
 
 -- Sky Loop Anti-Kill
 local ragdollRadius = 9
-local spazzCooldown = 0.03
+local spazzCooldown = 0.02
 
-local spazzDuration = 2       -- Seconds of spazzing
-local pauseDuration = 1       -- Seconds of rest
+local spazzDuration = 2       -- seconds of chaos
+local pauseDuration = 1       -- seconds of rest
 local cycleStartTime = tick()
 local isPaused = false
 local lastSpazzTime = 0
-
-local function randomOffset()
-    return Vector3.new(
-        math.random(-ragdollRadius * 100, ragdollRadius * 100) / 100,
-        math.random(-2, 2),
-        math.random(-ragdollRadius * 100, ragdollRadius * 100) / 100
-    )
-end
 
 RunService.Heartbeat:Connect(function()
     if skyEnabled and hum and hum.Health <= 25 then
@@ -243,12 +235,23 @@ RunService.Heartbeat:Connect(function()
             elseif now - lastSpazzTime >= spazzCooldown then
                 lastSpazzTime = now
 
-                -- Stay close to current grounded position
-                local baseY = math.max(hrp.Position.Y, Workspace.FallenPartsDestroyHeight + 8)
-                local newPos = Vector3.new(hrp.Position.X, baseY, hrp.Position.Z) + randomOffset()
+                -- Generate chaotic velocity
+                local vel = Vector3.new(
+                    math.random(-ragdollRadius * 10, ragdollRadius * 10),
+                    math.random(-ragdollRadius * 15, ragdollRadius * 15),
+                    math.random(-ragdollRadius * 10, ragdollRadius * 10)
+                )
 
-                -- Move using physics-friendly velocity
-                hrp.Velocity = (newPos - hrp.Position).Unit * 50
+                -- Random angular spin
+                local spin = Vector3.new(
+                    math.random(-50, 50),
+                    math.random(-50, 50),
+                    math.random(-50, 50)
+                )
+
+                -- Apply directly
+                hrp.Velocity = vel
+                hrp.RotVelocity = spin
             end
         end
     end
