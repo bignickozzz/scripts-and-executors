@@ -212,21 +212,21 @@ local function isValidSkyPosition(pos)
     return #parts == 0
 end
 
-task.spawn(function()
-    while isRunning do
-        task.wait(0.2)
-        if skyEnabled and hum and hum.Health <= 25 then
-            local hrp = chr:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local pos = hrp.Position
-                local newPos = Vector3.new(pos.X, pos.Y + 15, pos.Z)
-                if isValidSkyPosition(newPos) then
-                    chr:PivotTo(CFrame.new(newPos))
-                end
-            end
+RunService.Heartbeat:Connect(function()
+    if skyEnabled and hum and hum.Health <= 25 then
+        local hrp = chr:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local basePos = hrp.Position
+            -- Add small random offset around 30 studs above
+            local jitter = Vector3.new(
+                math.random(-2, 2), 0, math.random(-2, 2)
+            )
+            local abovePos = basePos + Vector3.new(0, 30, 0) + jitter
+            chr:PivotTo(CFrame.new(abovePos))
         end
     end
 end)
+
 
 -- ESP Setup
 local highlight = Instance.new("Highlight")
