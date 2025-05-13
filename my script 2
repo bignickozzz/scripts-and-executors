@@ -206,41 +206,39 @@ tabPlayer.MouseButton1Click:Connect(loadPlayerTab)
 loadMainTab()
 
 -- Sky Loop Anti-Kill
-local function isValidSkyPosition(pos)
-    local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
-    local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
-    return #parts == 0
-end
-
-local ragdollOffset = Vector3.new(0, 3, 0) -- hover ~3 studs above ground
-local maxSpazzDistance = 1.5 -- max random movement in each direction
-local lastRagdollTime = 0
+local ragdollRadius = 9
+local spazzCooldown = 0.03 -- 30ms update
+local lastSpazzTime = 0
 
 RunService.Heartbeat:Connect(function(dt)
     if skyEnabled and hum and hum.Health <= 25 then
         local hrp = chr:FindFirstChild("HumanoidRootPart")
         if hrp then
-            -- Prevent spamming too fast
-            if tick() - lastRagdollTime > 0.05 then
-                lastRagdollTime = tick()
+            if tick() - lastSpazzTime >= spazzCooldown then
+                lastSpazzTime = tick()
 
-                -- Stay near ground, hover ~3 studs
-                local basePos = hrp.Position
-                local targetY = math.max(basePos.Y, Workspace.FallenPartsDestroyHeight + 10) + ragdollOffset.Y
+                local baseY = math.max(hrp.Position.Y, Workspace.FallenPartsDestroyHeight + 10) + 2
 
-                -- Randomized tiny motion to simulate spazzing/ragdoll effect
-                local jitter = Vector3.new(
-                    math.random(-maxSpazzDistance * 100, maxSpazzDistance * 100) / 100,
-                    math.random(-0.5 * 100, 0.5 * 100) / 100,
-                    math.random(-maxSpazzDistance * 100, maxSpazzDistance * 100) / 100
+                -- Create a random offset within a sphere radius of 9 studs
+                local offset = Vector3.new(
+                    math.random(-900, 900) / 100, -- -9 to 9
+                    math.random(-100, 100) / 100, -- small vertical jitter
+                    math.random(-900, 900) / 100  -- -9 to 9
                 )
 
-                local targetPos = Vector3.new(basePos.X, targetY, basePos.Z) + jitter
+                local targetPos = Vector3.new(
+                    hrp.Position.X + offset.X,
+                    baseY + offset.Y,
+                    hrp.Position.Z + offset.Z
+                )
+
+                -- Apply the erratic teleport-like movement locally
                 chr:PivotTo(CFrame.new(targetPos))
             end
         end
     end
 end)
+
 
 
 
