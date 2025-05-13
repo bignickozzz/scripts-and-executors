@@ -212,37 +212,36 @@ local function isValidSkyPosition(pos)
     return #parts == 0
 end
 
-RunService.Heartbeat:Connect(function()
+local ragdollOffset = Vector3.new(0, 3, 0) -- hover ~3 studs above ground
+local maxSpazzDistance = 1.5 -- max random movement in each direction
+local lastRagdollTime = 0
+
+RunService.Heartbeat:Connect(function(dt)
     if skyEnabled and hum and hum.Health <= 25 then
         local hrp = chr:FindFirstChild("HumanoidRootPart")
         if hrp then
-            -- Randomly offset position in a spazzing motion around the character
-            local basePos = hrp.Position
-            local randomOffset = Vector3.new(
-                math.random(-2, 2),  -- Small horizontal random X movement
-                math.random(2, 5),   -- Small upward Y movement to keep above ground
-                math.random(-2, 2)   -- Small horizontal random Z movement
-            )
-            
-            -- Apply the offset to make the character jitter
-            local newPos = basePos + randomOffset
+            -- Prevent spamming too fast
+            if tick() - lastRagdollTime > 0.05 then
+                lastRagdollTime = tick()
 
-            -- Ensure the character remains above ground (slightly)
-            if newPos.Y < basePos.Y + 5 then
-                newPos = Vector3.new(newPos.X, basePos.Y + 5, newPos.Z)
-            end
+                -- Stay near ground, hover ~3 studs
+                local basePos = hrp.Position
+                local targetY = math.max(basePos.Y, Workspace.FallenPartsDestroyHeight + 10) + ragdollOffset.Y
 
-            -- Make sure we are not colliding with parts
-            local region = Region3.new(newPos - Vector3.new(1, 1, 1), newPos + Vector3.new(1, 1, 1))
-            local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
+                -- Randomized tiny motion to simulate spazzing/ragdoll effect
+                local jitter = Vector3.new(
+                    math.random(-maxSpazzDistance * 100, maxSpazzDistance * 100) / 100,
+                    math.random(-0.5 * 100, 0.5 * 100) / 100,
+                    math.random(-maxSpazzDistance * 100, maxSpazzDistance * 100) / 100
+                )
 
-            if #parts == 0 then
-                -- Simulate the spazzing motion with small random offsets
-                chr:PivotTo(CFrame.new(newPos))
+                local targetPos = Vector3.new(basePos.X, targetY, basePos.Z) + jitter
+                chr:PivotTo(CFrame.new(targetPos))
             end
         end
     end
 end)
+
 
 
 
