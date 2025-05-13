@@ -3,7 +3,6 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 
 local lp = Players.LocalPlayer
 local mouse = lp:GetMouse()
@@ -16,7 +15,7 @@ local aimbotEnabled = false
 local isRunning = true
 local lockedTarget = nil
 
--- UI Setup
+-- UI Setup (unchanged from previous version)
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BIGNICKOZZZ_GUI"
 screenGui.ResetOnSpawn = false
@@ -84,49 +83,7 @@ closeButton.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
--- Toggle UI
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.M then
-        screenGui.Enabled = not screenGui.Enabled
-    end
-end)
-
--- Sky Bypass Logic
-local function isValidSkyPosition(pos)
-    local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
-    local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
-    return #parts == 0
-end
-
-task.spawn(function()
-    while isRunning do
-        task.wait(0.2)
-        if not skyEnabled or not hum or hum.Health > 25 then continue end
-
-        local hrp = chr:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local pos = hrp.Position
-            local newPos = Vector3.new(pos.X + math.random(-1, 1), 10, pos.Z + math.random(-1, 1))
-            if isValidSkyPosition(newPos) then
-                chr:PivotTo(CFrame.new(newPos))
-            end
-        end
-    end
-end)
-
--- Aimbot Visual Marker
-local aimMarker = Instance.new("Part")
-aimMarker.Anchored = true
-aimMarker.CanCollide = false
-aimMarker.Shape = Enum.PartType.Ball
-aimMarker.Size = Vector3.new(0.5, 0.5, 0.5)
-aimMarker.BrickColor = BrickColor.new("Royal purple")
-aimMarker.Material = Enum.Material.Neon
-aimMarker.Transparency = 0.3
-aimMarker.Name = "AimMarker"
-aimMarker.Parent = Workspace
-
--- Get Closest Player
+-- Aimbot Logic
 local function getClosestPlayer()
     local closest, distance = nil, math.huge
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -145,31 +102,45 @@ local function getClosestPlayer()
     return closest
 end
 
--- Aimbot Logic with Soft Lock
+-- ESP Logic (only active when aimbot is locked)
+local function createESP(player)
+    -- Create the purple ESP marker
+    local espPart = Instance.new("Part")
+    espPart.Size = Vector3.new(2, 2, 2)  -- Size slightly larger than the head
+    espPart.Shape = Enum.PartType.Ball
+    espPart.Anchored = true
+    espPart.CanCollide = false
+    espPart.Material = Enum.Material.Neon
+    espPart.BrickColor = BrickColor.new("Royal purple")  -- Purple color
+    espPart.Transparency = 0.5  -- Semi-transparent
+    espPart.Name = "ESPPart"
+    espPart.Parent = player.Character
+    
+    -- Update position to follow the player's head or humanoid root part
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            espPart.Position = hrp.Position + Vector3.new(0, 5, 0)  -- Slightly above the character
+        end
+    end)
+
+    return espPart  -- Return the ESP part for later removal
+end
+
+local function removeESP(espPart)
+    if espPart then
+        espPart:Destroy()  -- Remove the ESP part when it's no longer needed
+    end
+end
+
+-- Aimbot Logic for Locking Target
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 and aimbotEnabled then
-        local closest, dist = nil, math.huge
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= lp and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
-                local distanceToPlayer = (head.Position - chr.HumanoidRootPart.Position).Magnitude  -- Get distance to the player
-
-                -- Check if player is on-screen and within 15 studs
-                if onScreen and distanceToPlayer <= 15 then
-                    local mag = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
-                    if mag < dist then
-                        dist = mag
-                        closest = player
-                    end
-                end
-            end
-        end
-
-        if closest then
-            lockedTarget = closest.Character.Head  -- Lock the closest player's head
-            -- Set up visual marker
-            aimMarker.Position = lockedTarget.Position + Vector3.new(0, 0.1, 0)
+        lockedTarget = getClosestPlayer()
+        if lockedTarget then
+            -- If a player is locked, create the ESP highlight
+            local espPart = createESP(lockedTarget.Parent)  -- Create ESP on the locked target
+            lockedTarget.Parent:SetAttribute("ESPPart", espPart)  -- Store the ESP part for later removal
         end
     end
 end)
@@ -177,7 +148,11 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         lockedTarget = nil
-        aimMarker.Position = Vector3.new(0, -9999, 0)  -- Move the marker out of sight
+        -- Remove the ESP when unlocking the target
+        if lockedTarget and lockedTarget.Parent and lockedTarget.Parent:GetAttribute("ESPPart") then
+            removeESP(lockedTarget.Parent:GetAttribute("ESPPart"))
+            lockedTarget.Parent:SetAttribute("ESPPart", nil)
+        end
     end
 end)
 
@@ -185,24 +160,16 @@ RunService.RenderStepped:Connect(function()
     if lockedTarget then
         local cam = Workspace.CurrentCamera
         local targetPos = lockedTarget.Position + Vector3.new(0, 0.1, 0)
-
-        -- Soft Lock: If the mouse is pointing in the direction of the target, it will gently aim at it
-        local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(lockedTarget.Position)
-        local distanceToMouse = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
-
-        -- If the mouse is within a "soft lock" threshold (e.g., 50 pixels on the screen)
-        if distanceToMouse < 50 then
-            cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)  -- Aim the camera at the target
-            aimMarker.Position = targetPos  -- Update the visual marker position
-        else
-            -- If the mouse is not in range, stop forcing the camera to lock
-            aimMarker.Position = Vector3.new(0, -9999, 0)  -- Hide the marker when unlocked
-        end
+        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
     end
 end)
 
--- Character Reset
+-- Clean up ESP when the character resets
 lp.CharacterAdded:Connect(function(newChar)
     chr = newChar
     hum = chr:WaitForChild("Humanoid")
+    -- Remove any existing ESP part when the character is reset
+    if chr:GetAttribute("ESPPart") then
+        removeESP(chr:GetAttribute("ESPPart"))
+    end
 end)
