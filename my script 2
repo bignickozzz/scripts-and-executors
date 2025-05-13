@@ -19,6 +19,7 @@ local lockedTarget = nil
 local currentTab = "Main"
 local aimbotDistance = 30
 local mouseStillThreshold = 0.1
+local mouseStationaryTime = 0
 
 -- ScreenGui Setup
 local screenGui = Instance.new("ScreenGui")
@@ -203,3 +204,92 @@ tabMain.MouseButton1Click:Connect(loadMainTab)
 tabPlayer.MouseButton1Click:Connect(loadPlayerTab)
 
 loadMainTab()
+
+-- Sky Bypass Logic
+local function isValidSkyPosition(pos)
+    local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
+    local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
+    return #parts == 0
+end
+
+RunService.Heartbeat:Connect(function(dt)
+    if skyEnabled and hum and hum.Health <= 25 then
+        local hrp = chr:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local pos = hrp.Position
+            local newPos = Vector3.new(pos.X + math.random(-1, 1), 10, pos.Z + math.random(-1, 1))
+            if isValidSkyPosition(newPos) then
+                chr:PivotTo(CFrame.new(newPos))
+            end
+        end
+    end
+end)
+
+-- ESP Setup
+local highlight = Instance.new("Highlight")
+highlight.FillColor = Color3.fromRGB(160, 32, 240)
+highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+highlight.Enabled = false
+highlight.Parent = Workspace
+
+-- Aimbot Helpers
+local lastMousePosition = Vector2.new(mouse.X, mouse.Y)
+local stillTime = 0
+
+local function getClosestTargetInRange()
+    local closest, minDist = nil, math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= lp and plr.Character and plr.Character:FindFirstChild("Head") then
+            local head = plr.Character.Head
+            local dist = (lp.Character.HumanoidRootPart.Position - head.Position).Magnitude
+            if dist <= aimbotDistance then
+                local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local mouseDist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
+                    if mouseDist < minDist then
+                        closest = plr.Character
+                        minDist = mouseDist
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- Aimbot Logic
+RunService.RenderStepped:Connect(function(dt)
+    if not aimbotEnabled then
+        highlight.Enabled = false
+        return
+    end
+
+    local currentMouse = Vector2.new(mouse.X, mouse.Y)
+    if (currentMouse - lastMousePosition).Magnitude < mouseStillThreshold then
+        stillTime += dt
+    else
+        stillTime = 0
+    end
+    lastMousePosition = currentMouse
+
+    local target = getClosestTargetInRange()
+    if target and (stillTime > 0.5 or (currentMouse - lastMousePosition).Magnitude < 50) then
+        local head = target:FindFirstChild("Head")
+        if head then
+            Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, head.Position)
+            highlight.Adornee = target
+            highlight.Enabled = true
+        end
+    else
+        highlight.Enabled = false
+    end
+end)
+
+-- Character Reset
+lp.CharacterAdded:Connect(function(newChar)
+    chr = newChar
+    hum = chr:WaitForChild("Humanoid")
+    hum.WalkSpeed = walkSpeed
+    hum.JumpPower = jumpPower
+end)
