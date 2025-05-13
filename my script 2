@@ -177,16 +177,31 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-local RunService = game:GetService("RunService")
+-- Anti-Stamina Drain (Constant refill + interception)
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
 
-RunService.RenderStepped:Connect(function()
-    local stamina = player:FindFirstChild("Stamina") or player.Character and player.Character:FindFirstChild("Stamina")
+local function keepStaminaFull()
+    local char = lp.Character or lp.CharacterAdded:Wait()
+    local stamina = char:FindFirstChild("Stamina") or lp:FindFirstChild("Stamina")
     if stamina and stamina:IsA("NumberValue") then
-        stamina.Value = stamina.MaxValue or 100
+        -- Refill loop
+        RunService.RenderStepped:Connect(function()
+            stamina.Value = stamina.MaxValue or 100
+        end)
+
+        -- Prevent server changes
+        stamina:GetPropertyChangedSignal("Value"):Connect(function()
+            if stamina.Value < (stamina.MaxValue or 100) then
+                stamina.Value = stamina.MaxValue or 100
+            end
+        end)
     end
-end)
+end
+
+lp.CharacterAdded:Connect(keepStaminaFull)
+keepStaminaFull()
 
 
 -- Character Reset
