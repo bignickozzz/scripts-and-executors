@@ -1,8 +1,10 @@
+-- BIGNICKOZZZ FULL SCRIPT
 -- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local lp = Players.LocalPlayer
 local mouse = lp:GetMouse()
@@ -14,162 +16,190 @@ local skyEnabled = false
 local aimbotEnabled = false
 local isRunning = true
 local lockedTarget = nil
+local currentTab = "Main"
+local aimbotDistance = 30
+local mouseStillThreshold = 0.1
 
--- UI Setup (unchanged from previous version)
+-- ScreenGui Setup
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BIGNICKOZZZ_GUI"
 screenGui.ResetOnSpawn = false
 screenGui.Enabled = true
 screenGui.Parent = lp:WaitForChild("PlayerGui")
 
-local uiCorner = Instance.new("UICorner")
-local function createButton(text)
+-- UI Components
+local function createUICorner(parent)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = parent
+end
+
+local function createTabButton(text, position)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(0, 80, 0, 30)
+    btn.Position = position
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.Text = text
-    uiCorner:Clone().Parent = btn
+    btn.TextSize = 14
+    createUICorner(btn)
     return btn
 end
 
+local function createSlider(labelText, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -20, 0, 60)
+    frame.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Text = labelText
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.Parent = frame
+
+    local slider = Instance.new("TextBox")
+    slider.Size = UDim2.new(1, 0, 0, 30)
+    slider.Position = UDim2.new(0, 0, 0, 25)
+    slider.Text = tostring(default)
+    slider.TextColor3 = Color3.new(1, 1, 1)
+    slider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    slider.Font = Enum.Font.Gotham
+    slider.TextSize = 14
+    createUICorner(slider)
+    slider.Parent = frame
+
+    slider.FocusLost:Connect(function()
+        local val = tonumber(slider.Text)
+        if val then
+            val = math.clamp(val, min, max)
+            slider.Text = tostring(val)
+            callback(val)
+        else
+            slider.Text = tostring(default)
+        end
+    end)
+
+    return frame
+end
+
+-- Main UI Frame
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 220)
-mainFrame.Position = UDim2.new(0.5, -130, 0.5, -110)
+mainFrame.Size = UDim2.new(0, 300, 0, 300)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.Active = true
 mainFrame.Draggable = true
-uiCorner.Parent = mainFrame
+createUICorner(mainFrame)
 mainFrame.Parent = screenGui
 
+-- Title Bar
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 40)
+title.Size = UDim2.new(1, -30, 0, 40)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
 title.TextColor3 = Color3.fromRGB(255, 80, 255)
 title.Text = "BIGNICKOZZZ SCRIPT"
 title.Font = Enum.Font.GothamBlack
 title.TextSize = 20
+title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = mainFrame
 
-local skyButton = createButton("Sky: Disabled")
-skyButton.Position = UDim2.new(0, 10, 0, 50)
-skyButton.Parent = mainFrame
+-- Close Button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.new(1, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 14
+createUICorner(closeBtn)
+closeBtn.Parent = mainFrame
 
-local aimbotButton = createButton("Aimbot: Disabled")
-aimbotButton.Position = UDim2.new(0, 10, 0, 100)
-aimbotButton.Parent = mainFrame
-
-local closeButton = createButton("Close")
-closeButton.Position = UDim2.new(0, 10, 0, 150)
-closeButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-closeButton.Parent = mainFrame
-
--- Button Logic
-skyButton.MouseButton1Click:Connect(function()
-    skyEnabled = not skyEnabled
-    skyButton.Text = skyEnabled and "Sky: Enabled" or "Sky: Disabled"
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
 end)
 
-aimbotButton.MouseButton1Click:Connect(function()
-    aimbotEnabled = not aimbotEnabled
-    aimbotButton.Text = aimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
-end)
-
-closeButton.MouseButton1Click:Connect(function()
-    isRunning = false
-    screenGui:Destroy()
-end)
-
--- Aimbot Logic
-local function getClosestPlayer()
-    local closest, distance = nil, math.huge
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= lp and plr.Character and plr.Character:FindFirstChild("Head") then
-            local head = plr.Character.Head
-            local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
-            if onScreen then
-                local dist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
-                if dist < distance and dist < 150 then
-                    closest = head
-                    distance = dist
-                end
-            end
-        end
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.M then
+        screenGui.Enabled = not screenGui.Enabled
     end
-    return closest
+end)
+
+-- Tab Buttons
+local tabMain = createTabButton("Main", UDim2.new(0, 10, 0, 45))
+tabMain.Parent = mainFrame
+local tabPlayer = createTabButton("Player", UDim2.new(0, 100, 0, 45))
+tabPlayer.Parent = mainFrame
+
+local container = Instance.new("Frame")
+container.Size = UDim2.new(1, -20, 1, -80)
+container.Position = UDim2.new(0, 10, 0, 80)
+container.BackgroundTransparency = 1
+container.Parent = mainFrame
+
+local function clearContainer()
+    for _, c in pairs(container:GetChildren()) do
+        c:Destroy()
+    end
 end
 
--- ESP Logic (only active when aimbot is locked)
-local function createESP(player)
-    -- Create the purple ESP marker
-    local espPart = Instance.new("Part")
-    espPart.Size = Vector3.new(2, 2, 2)  -- Size slightly larger than the head
-    espPart.Shape = Enum.PartType.Ball
-    espPart.Anchored = true
-    espPart.CanCollide = false
-    espPart.Material = Enum.Material.Neon
-    espPart.BrickColor = BrickColor.new("Royal purple")  -- Purple color
-    espPart.Transparency = 0.5  -- Semi-transparent
-    espPart.Name = "ESPPart"
-    espPart.Parent = player.Character
-    
-    -- Update position to follow the player's head or humanoid root part
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            espPart.Position = hrp.Position + Vector3.new(0, 5, 0)  -- Slightly above the character
-        end
+-- Tab: Main
+local function loadMainTab()
+    clearContainer()
+
+    local skyButton = createTabButton("Sky: Disabled", UDim2.new(0, 0, 0, 0))
+    skyButton.Size = UDim2.new(1, 0, 0, 40)
+    skyButton.Parent = container
+
+    local aimbotButton = createTabButton("Aimbot: Disabled", UDim2.new(0, 0, 0, 50))
+    aimbotButton.Size = UDim2.new(1, 0, 0, 40)
+    aimbotButton.Parent = container
+
+    skyButton.MouseButton1Click:Connect(function()
+        skyEnabled = not skyEnabled
+        skyButton.Text = skyEnabled and "Sky: Enabled" or "Sky: Disabled"
     end)
 
-    return espPart  -- Return the ESP part for later removal
+    aimbotButton.MouseButton1Click:Connect(function()
+        aimbotEnabled = not aimbotEnabled
+        aimbotButton.Text = aimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
+    end)
 end
 
-local function removeESP(espPart)
-    if espPart then
-        espPart:Destroy()  -- Remove the ESP part when it's no longer needed
-    end
+-- Tab: Player Sliders
+local walkSpeed = 16
+local jumpPower = 50
+
+local function loadPlayerTab()
+    clearContainer()
+
+    local speedSlider = createSlider("WalkSpeed", 8, 100, walkSpeed, function(val)
+        walkSpeed = val
+        hum.WalkSpeed = val
+    end)
+    speedSlider.Position = UDim2.new(0, 0, 0, 0)
+    speedSlider.Parent = container
+
+    local jumpSlider = createSlider("JumpPower", 30, 150, jumpPower, function(val)
+        jumpPower = val
+        hum.JumpPower = val
+    end)
+    jumpSlider.Position = UDim2.new(0, 0, 0, 70)
+    jumpSlider.Parent = container
+
+    local aimSlider = createSlider("Aimbot Range", 10, 100, aimbotDistance, function(val)
+        aimbotDistance = val
+    end)
+    aimSlider.Position = UDim2.new(0, 0, 0, 140)
+    aimSlider.Parent = container
 end
 
--- Aimbot Logic for Locking Target
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 and aimbotEnabled then
-        lockedTarget = getClosestPlayer()
-        if lockedTarget then
-            -- If a player is locked, create the ESP highlight
-            local espPart = createESP(lockedTarget.Parent)  -- Create ESP on the locked target
-            lockedTarget.Parent:SetAttribute("ESPPart", espPart)  -- Store the ESP part for later removal
-        end
-    end
-end)
+tabMain.MouseButton1Click:Connect(loadMainTab)
+tabPlayer.MouseButton1Click:Connect(loadPlayerTab)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        lockedTarget = nil
-        -- Remove the ESP when unlocking the target
-        if lockedTarget and lockedTarget.Parent and lockedTarget.Parent:GetAttribute("ESPPart") then
-            removeESP(lockedTarget.Parent:GetAttribute("ESPPart"))
-            lockedTarget.Parent:SetAttribute("ESPPart", nil)
-        end
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if lockedTarget then
-        local cam = Workspace.CurrentCamera
-        local targetPos = lockedTarget.Position + Vector3.new(0, 0.1, 0)
-        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
-    end
-end)
-
--- Clean up ESP when the character resets
-lp.CharacterAdded:Connect(function(newChar)
-    chr = newChar
-    hum = chr:WaitForChild("Humanoid")
-    -- Remove any existing ESP part when the character is reset
-    if chr:GetAttribute("ESPPart") then
-        removeESP(chr:GetAttribute("ESPPart"))
-    end
-end)
+loadMainTab()
