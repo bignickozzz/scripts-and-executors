@@ -208,14 +208,13 @@ loadMainTab()
 -- Sky Loop Anti-Kill
 local ragdollRadius = 9
 local spazzCooldown = 0.03
-local pauseDuration = 0.5
-local activeDuration = 3
 
-local lastSpazzTime = 0
+local spazzDuration = 2       -- Seconds of spazzing
+local pauseDuration = 1       -- Seconds of rest
 local cycleStartTime = tick()
 local isPaused = false
+local lastSpazzTime = 0
 
--- Slight randomized offset to create more chaotic motion
 local function randomOffset()
     return Vector3.new(
         math.random(-ragdollRadius * 100, ragdollRadius * 100) / 100,
@@ -227,34 +226,33 @@ end
 RunService.Heartbeat:Connect(function()
     if skyEnabled and hum and hum.Health <= 25 then
         local hrp = chr:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local now = tick()
+        if not hrp then return end
 
-            -- Cycle pause and active state
-            if not isPaused and now - cycleStartTime >= activeDuration then
-                isPaused = true
-                cycleStartTime = now
-            elseif isPaused and now - cycleStartTime >= pauseDuration then
+        local now = tick()
+        local cycleElapsed = now - cycleStartTime
+
+        if isPaused then
+            if cycleElapsed >= pauseDuration then
                 isPaused = false
                 cycleStartTime = now
             end
-
-            -- Apply ragdoll-style spazzing
-            if not isPaused and now - lastSpazzTime >= spazzCooldown then
+        else
+            if cycleElapsed >= spazzDuration then
+                isPaused = true
+                cycleStartTime = now
+            elseif now - lastSpazzTime >= spazzCooldown then
                 lastSpazzTime = now
 
-                -- Keep it floating slightly above ground to simulate downed flailing
+                -- Stay close to current grounded position
                 local baseY = math.max(hrp.Position.Y, Workspace.FallenPartsDestroyHeight + 8)
                 local newPos = Vector3.new(hrp.Position.X, baseY, hrp.Position.Z) + randomOffset()
-                
-                -- Smooth local movement (less TP detection)
+
+                -- Move using physics-friendly velocity
                 hrp.Velocity = (newPos - hrp.Position).Unit * 50
             end
         end
     end
 end)
-
-
 
 
 
