@@ -208,9 +208,8 @@ loadMainTab()
 -- Sky Loop Anti-Kill
 local ragdollRadius = 9
 local spazzCooldown = 0.02
-
-local spazzDuration = 2       -- seconds of chaos
-local pauseDuration = 1       -- seconds of rest
+local spazzDuration = 2
+local pauseDuration = 1
 local cycleStartTime = tick()
 local isPaused = false
 local lastSpazzTime = 0
@@ -235,28 +234,28 @@ RunService.Heartbeat:Connect(function()
             elseif now - lastSpazzTime >= spazzCooldown then
                 lastSpazzTime = now
 
-                -- Generate chaotic velocity
+                -- Burst force, heavily random including upward float
+                local upForce = math.random(30, 80)  -- higher upward range
                 local vel = Vector3.new(
                     math.random(-ragdollRadius * 10, ragdollRadius * 10),
-                    math.random(-ragdollRadius * 15, ragdollRadius * 15),
+                    upForce,
                     math.random(-ragdollRadius * 10, ragdollRadius * 10)
                 )
 
-                -- Random angular spin
+                -- Random rotation force
                 local spin = Vector3.new(
-                    math.random(-50, 50),
-                    math.random(-50, 50),
-                    math.random(-50, 50)
+                    math.random(-100, 100),
+                    math.random(-100, 100),
+                    math.random(-100, 100)
                 )
 
-                -- Apply directly
+                -- Apply chaos
                 hrp.Velocity = vel
                 hrp.RotVelocity = spin
             end
         end
     end
 end)
-
 
 
 
