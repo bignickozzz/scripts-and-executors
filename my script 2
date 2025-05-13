@@ -145,7 +145,7 @@ local function getClosestPlayer()
     return closest
 end
 
--- Aimbot Logic
+-- Aimbot Logic with Soft Lock
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 and aimbotEnabled then
         local closest, dist = nil, math.huge
@@ -185,10 +185,22 @@ RunService.RenderStepped:Connect(function()
     if lockedTarget then
         local cam = Workspace.CurrentCamera
         local targetPos = lockedTarget.Position + Vector3.new(0, 0.1, 0)
-        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)  -- Aim the camera at the target
-        aimMarker.Position = targetPos  -- Update the visual marker position
+
+        -- Soft Lock: If the mouse is pointing in the direction of the target, it will gently aim at it
+        local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(lockedTarget.Position)
+        local distanceToMouse = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+
+        -- If the mouse is within a "soft lock" threshold (e.g., 50 pixels on the screen)
+        if distanceToMouse < 50 then
+            cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)  -- Aim the camera at the target
+            aimMarker.Position = targetPos  -- Update the visual marker position
+        else
+            -- If the mouse is not in range, stop forcing the camera to lock
+            aimMarker.Position = Vector3.new(0, -9999, 0)  -- Hide the marker when unlocked
+        end
     end
 end)
+
 -- Character Reset
 lp.CharacterAdded:Connect(function(newChar)
     chr = newChar
