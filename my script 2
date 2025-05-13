@@ -1,168 +1,175 @@
 -- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
 local lp = Players.LocalPlayer
+local mouse = lp:GetMouse()
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 
 -- Flags
-local isAimbotEnabled = false
+local skyEnabled = false
+local aimbotEnabled = false
+local isRunning = true
 local lockedTarget = nil
-local aimCircle = nil
-local isShooting = false
 
 -- UI Setup
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BIGNICKOZZZ_ScriptUI"
+screenGui.Name = "BIGNICKOZZZ_GUI"
 screenGui.ResetOnSpawn = false
-screenGui.Enabled = false
+screenGui.Enabled = true
 screenGui.Parent = lp:WaitForChild("PlayerGui")
 
--- Main Frame
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 180)
-frame.Position = UDim2.new(0.5, -150, 0.5, -90)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
-frame.Parent = screenGui
+local uiCorner = Instance.new("UICorner")
+local function createButton(text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.Text = text
+    uiCorner:Clone().Parent = btn
+    return btn
+end
 
--- Title Text
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(0, 300, 0, 30)
-titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 18
-titleLabel.Text = "BIGNICKOZZZ SCRIPT"
-titleLabel.TextScaled = true
-titleLabel.Parent = frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 260, 0, 220)
+mainFrame.Position = UDim2.new(0.5, -130, 0.5, -110)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.Active = true
+mainFrame.Draggable = true
+uiCorner.Parent = mainFrame
+mainFrame.Parent = screenGui
 
--- Aimbot Button
-local aimbotButton = Instance.new("TextButton")
-aimbotButton.Size = UDim2.new(0, 250, 0, 40)
-aimbotButton.Position = UDim2.new(0, 25, 0, 90)
-aimbotButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-aimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-aimbotButton.Font = Enum.Font.SourceSansBold
-aimbotButton.TextSize = 16
-aimbotButton.Text = "Aimbot: Disabled"
-aimbotButton.Parent = frame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 80, 255)
+title.Text = "BIGNICKOZZZ SCRIPT"
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 20
+title.Parent = mainFrame
 
--- Close (X) Button
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 25, 0, 25)
-closeButton.Position = UDim2.new(1, -30, 0, 5)
-closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-closeButton.TextColor3 = Color3.new(1, 1, 1)
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.TextSize = 16
-closeButton.Text = "X"
-closeButton.Parent = frame
+local skyButton = createButton("Sky: Disabled")
+skyButton.Position = UDim2.new(0, 10, 0, 50)
+skyButton.Parent = mainFrame
 
--- Aimbot Button Functionality
+local aimbotButton = createButton("Aimbot: Disabled")
+aimbotButton.Position = UDim2.new(0, 10, 0, 100)
+aimbotButton.Parent = mainFrame
+
+local closeButton = createButton("Close")
+closeButton.Position = UDim2.new(0, 10, 0, 150)
+closeButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeButton.Parent = mainFrame
+
+-- Button Logic
+skyButton.MouseButton1Click:Connect(function()
+    skyEnabled = not skyEnabled
+    skyButton.Text = skyEnabled and "Sky: Enabled" or "Sky: Disabled"
+end)
+
 aimbotButton.MouseButton1Click:Connect(function()
-	isAimbotEnabled = not isAimbotEnabled
-	aimbotButton.Text = isAimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
-	aimbotButton.BackgroundColor3 = isAimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    aimbotEnabled = not aimbotEnabled
+    aimbotButton.Text = aimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
 end)
 
--- Close Button Functionality
 closeButton.MouseButton1Click:Connect(function()
-	screenGui:Destroy()
+    isRunning = false
+    screenGui:Destroy()
 end)
 
--- Toggle UI Visibility with M key
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.KeyCode == Enum.KeyCode.M then
-		screenGui.Enabled = not screenGui.Enabled
-	end
+-- Toggle UI
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.M then
+        screenGui.Enabled = not screenGui.Enabled
+    end
 end)
 
--- Aimbot Logic (Lock onto player's head)
+-- Sky Bypass Logic
+local function isValidSkyPosition(pos)
+    local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
+    local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
+    return #parts == 0
+end
+
 task.spawn(function()
-	while true do
-		task.wait(0.1)
+    while isRunning do
+        task.wait(0.2)
+        if not skyEnabled or not hum or hum.Health > 25 then continue end
 
-		if isAimbotEnabled then
-			-- Find the nearest player to lock onto
-			local closestTarget = nil
-			local shortestDistance = math.huge
-			for _, player in pairs(Players:GetPlayers()) do
-				if player ~= lp and player.Character and player.Character:FindFirstChild("Head") then
-					local targetPos = player.Character.Head.Position
-					local distance = (chr.HumanoidRootPart.Position - targetPos).Magnitude
-
-					if distance < shortestDistance then
-						closestTarget = player
-						shortestDistance = distance
-					end
-				end
-			end
-
-			if closestTarget then
-				-- Lock onto the closest player's head
-				local head = closestTarget.Character:FindFirstChild("Head")
-				if head then
-					-- Show a purple circle above the target's head to indicate lock-on
-					if not aimCircle then
-						aimCircle = Instance.new("Part")
-						aimCircle.Shape = Enum.PartType.Ball
-						aimCircle.Size = Vector3.new(1, 1, 1)
-						aimCircle.Color = Color3.fromRGB(255, 0, 255)  -- Purple
-						aimCircle.Anchored = true
-						aimCircle.CanCollide = false
-						aimCircle.Parent = Workspace
-					end
-
-					aimCircle.Position = head.Position + Vector3.new(0, 1, 0)  -- Slightly above the head
-
-					-- Store the locked target
-					lockedTarget = closestTarget
-				end
-			end
-		end
-	end
+        local hrp = chr:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local pos = hrp.Position
+            local newPos = Vector3.new(pos.X + math.random(-1, 1), 10, pos.Z + math.random(-1, 1))
+            if isValidSkyPosition(newPos) then
+                chr:PivotTo(CFrame.new(newPos))
+            end
+        end
+    end
 end)
 
--- Left Mouse Button (LMB) to manually shoot towards the locked target
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
-		-- When Left Mouse Button (LMB) is pressed, shoot towards the locked target's head
-		if lockedTarget and lockedTarget.Character and lockedTarget.Character:FindFirstChild("Head") then
-			local targetHead = lockedTarget.Character.Head
-			-- Shoot towards the locked target's head
-			local ray = Ray.new(chr.HumanoidRootPart.Position, (targetHead.Position - chr.HumanoidRootPart.Position).unit * 500)
-			local hitPart, hitPosition = Workspace:FindPartOnRay(ray, chr)
+-- Aimbot Visual Marker
+local aimMarker = Instance.new("Part")
+aimMarker.Anchored = true
+aimMarker.CanCollide = false
+aimMarker.Shape = Enum.PartType.Ball
+aimMarker.Size = Vector3.new(0.5, 0.5, 0.5)
+aimMarker.BrickColor = BrickColor.new("Royal purple")
+aimMarker.Material = Enum.Material.Neon
+aimMarker.Transparency = 0.3
+aimMarker.Name = "AimMarker"
+aimMarker.Parent = Workspace
 
-			if hitPart and hitPart.Parent == lockedTarget.Character then
-				-- Successfully hit the locked target's head, simulate gunshot hit
-				print("Shot fired at target head!")
-				-- You can add a shooting effect here (e.g., particle effects or damage logic)
-			end
-		end
-	end
+-- Get Closest Player
+local function getClosestPlayer()
+    local closest, distance = nil, math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= lp and plr.Character and plr.Character:FindFirstChild("Head") then
+            local head = plr.Character.Head
+            local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+            if onScreen then
+                local dist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
+                if dist < distance and dist < 150 then
+                    closest = head
+                    distance = dist
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- Aimbot Logic
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 and aimbotEnabled then
+        lockedTarget = getClosestPlayer()
+    end
 end)
 
--- Right Mouse Button (RMB) to lock onto the target without shooting
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton2 then
-		-- When RMB is pressed, lock on to the target's head (this doesn't fire)
-		if lockedTarget and lockedTarget.Character and lockedTarget.Character:FindFirstChild("Head") then
-			local targetHead = lockedTarget.Character.Head
-			-- Aim at the locked target's head
-			chr:LookAt(targetHead.Position)
-			print("Locked onto target's head")
-		end
-	end
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        lockedTarget = nil
+        aimMarker.Position = Vector3.new(0, -9999, 0)
+    end
 end)
 
--- Character reset handler
+RunService.RenderStepped:Connect(function()
+    if lockedTarget and lockedTarget.Parent then
+        local cam = Workspace.CurrentCamera
+        local targetPos = lockedTarget.Position + Vector3.new(0, 0.1, 0)
+        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
+        aimMarker.Position = targetPos
+    end
+end)
+
+-- Character Reset
 lp.CharacterAdded:Connect(function(newChar)
-	chr = newChar
-	hum = chr:WaitForChild("Humanoid")
+    chr = newChar
+    hum = chr:WaitForChild("Humanoid")
 end)
