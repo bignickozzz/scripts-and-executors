@@ -207,33 +207,48 @@ loadMainTab()
 
 -- Sky Loop Anti-Kill
 local ragdollRadius = 9
-local spazzCooldown = 0.03 -- 30ms update
-local lastSpazzTime = 0
+local spazzCooldown = 0.03
+local pauseDuration = 0.5
+local activeDuration = 3
 
-RunService.Heartbeat:Connect(function(dt)
+local lastSpazzTime = 0
+local cycleStartTime = tick()
+local isPaused = false
+
+-- Slight randomized offset to create more chaotic motion
+local function randomOffset()
+    return Vector3.new(
+        math.random(-ragdollRadius * 100, ragdollRadius * 100) / 100,
+        math.random(-2, 2),
+        math.random(-ragdollRadius * 100, ragdollRadius * 100) / 100
+    )
+end
+
+RunService.Heartbeat:Connect(function()
     if skyEnabled and hum and hum.Health <= 25 then
         local hrp = chr:FindFirstChild("HumanoidRootPart")
         if hrp then
-            if tick() - lastSpazzTime >= spazzCooldown then
-                lastSpazzTime = tick()
+            local now = tick()
 
-                local baseY = math.max(hrp.Position.Y, Workspace.FallenPartsDestroyHeight + 10) + 2
+            -- Cycle pause and active state
+            if not isPaused and now - cycleStartTime >= activeDuration then
+                isPaused = true
+                cycleStartTime = now
+            elseif isPaused and now - cycleStartTime >= pauseDuration then
+                isPaused = false
+                cycleStartTime = now
+            end
 
-                -- Create a random offset within a sphere radius of 9 studs
-                local offset = Vector3.new(
-                    math.random(-900, 900) / 100, -- -9 to 9
-                    math.random(-100, 100) / 100, -- small vertical jitter
-                    math.random(-900, 900) / 100  -- -9 to 9
-                )
+            -- Apply ragdoll-style spazzing
+            if not isPaused and now - lastSpazzTime >= spazzCooldown then
+                lastSpazzTime = now
 
-                local targetPos = Vector3.new(
-                    hrp.Position.X + offset.X,
-                    baseY + offset.Y,
-                    hrp.Position.Z + offset.Z
-                )
-
-                -- Apply the erratic teleport-like movement locally
-                chr:PivotTo(CFrame.new(targetPos))
+                -- Keep it floating slightly above ground to simulate downed flailing
+                local baseY = math.max(hrp.Position.Y, Workspace.FallenPartsDestroyHeight + 8)
+                local newPos = Vector3.new(hrp.Position.X, baseY, hrp.Position.Z) + randomOffset()
+                
+                -- Smooth local movement (less TP detection)
+                hrp.Velocity = (newPos - hrp.Position).Unit * 50
             end
         end
     end
