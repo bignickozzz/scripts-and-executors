@@ -216,21 +216,34 @@ RunService.Heartbeat:Connect(function()
     if skyEnabled and hum and hum.Health <= 25 then
         local hrp = chr:FindFirstChild("HumanoidRootPart")
         if hrp then
+            -- Randomly offset position in a spazzing motion around the character
             local basePos = hrp.Position
-            -- Ensure the position is within the world bounds and 30 studs above
-            local abovePos = basePos + Vector3.new(0, 30, 0)
+            local randomOffset = Vector3.new(
+                math.random(-2, 2),  -- Small horizontal random X movement
+                math.random(2, 5),   -- Small upward Y movement to keep above ground
+                math.random(-2, 2)   -- Small horizontal random Z movement
+            )
             
-            -- Only teleport if the new position is above ground (valid position)
-            local region = Region3.new(abovePos - Vector3.new(1, 1, 1), abovePos + Vector3.new(1, 1, 1))
+            -- Apply the offset to make the character jitter
+            local newPos = basePos + randomOffset
+
+            -- Ensure the character remains above ground (slightly)
+            if newPos.Y < basePos.Y + 5 then
+                newPos = Vector3.new(newPos.X, basePos.Y + 5, newPos.Z)
+            end
+
+            -- Make sure we are not colliding with parts
+            local region = Region3.new(newPos - Vector3.new(1, 1, 1), newPos + Vector3.new(1, 1, 1))
             local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
-            
-            -- Avoid teleporting if the space is blocked
+
             if #parts == 0 then
-                chr:PivotTo(CFrame.new(abovePos))
+                -- Simulate the spazzing motion with small random offsets
+                chr:PivotTo(CFrame.new(newPos))
             end
         end
     end
 end)
+
 
 
 
