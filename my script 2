@@ -15,7 +15,6 @@ local skyEnabled = false
 local aimbotEnabled = false
 local isRunning = true
 local lockedTarget = nil
-local walkSpeed = 16  -- Default walk speed
 
 -- UI Setup
 local screenGui = Instance.new("ScreenGui")
@@ -38,8 +37,8 @@ local function createButton(text)
 end
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 260) -- Increased the height for extra features
-mainFrame.Position = UDim2.new(0.5, -130, 0.5, -130)
+mainFrame.Size = UDim2.new(0, 260, 0, 220)
+mainFrame.Position = UDim2.new(0.5, -130, 0.5, -110)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.Active = true
 mainFrame.Draggable = true
@@ -64,18 +63,8 @@ local aimbotButton = createButton("Aimbot: Disabled")
 aimbotButton.Position = UDim2.new(0, 10, 0, 100)
 aimbotButton.Parent = mainFrame
 
-local walkSpeedBox = Instance.new("TextBox")
-walkSpeedBox.Size = UDim2.new(0, 200, 0, 40)
-walkSpeedBox.Position = UDim2.new(0, 10, 0, 150)
-walkSpeedBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-walkSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-walkSpeedBox.Font = Enum.Font.GothamBold
-walkSpeedBox.TextSize = 16
-walkSpeedBox.Text = tostring(walkSpeed)
-walkSpeedBox.Parent = mainFrame
-
 local closeButton = createButton("Close")
-closeButton.Position = UDim2.new(0, 10, 0, 200)
+closeButton.Position = UDim2.new(0, 10, 0, 150)
 closeButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 closeButton.Parent = mainFrame
 
@@ -90,25 +79,12 @@ aimbotButton.MouseButton1Click:Connect(function()
     aimbotButton.Text = aimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
 end)
 
--- Update walk speed based on input
-walkSpeedBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        local newSpeed = tonumber(walkSpeedBox.Text)
-        if newSpeed then
-            walkSpeed = newSpeed
-            hum.WalkSpeed = walkSpeed  -- Apply new walk speed to the character
-        else
-            walkSpeedBox.Text = tostring(walkSpeed)  -- Reset to previous speed if invalid
-        end
-    end
-end)
-
 closeButton.MouseButton1Click:Connect(function()
     isRunning = false
     screenGui:Destroy()
 end)
 
--- Toggle UI visibility using "M" key
+-- Toggle UI
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.M then
         screenGui.Enabled = not screenGui.Enabled
@@ -150,7 +126,7 @@ aimMarker.Transparency = 0.3
 aimMarker.Name = "AimMarker"
 aimMarker.Parent = Workspace
 
--- Get Closest Player within 15 studs
+-- Get Closest Player
 local function getClosestPlayer()
     local closest, distance = nil, math.huge
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -159,7 +135,7 @@ local function getClosestPlayer()
             local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
             if onScreen then
                 local dist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
-                if dist < distance and dist < 15 then  -- Target only if within 15 studs
+                if dist < distance and dist < 150 then
                     closest = head
                     distance = dist
                 end
