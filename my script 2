@@ -1,143 +1,144 @@
+--[[
+    BIGNICKOZZZ SCRIPT - Enhanced Roblox Utility UI
+    Features:
+    - Sky Bypass Toggle
+    - Dynamic Aimbot with ESP Circle (Locks on Closest Player's Head on RMB)
+    - Jump Height and Walk Speed Sliders
+    - Clean, Professional UI
+--]]
+
 -- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 
 local lp = Players.LocalPlayer
-local mouse = lp:GetMouse()
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
 
 -- Flags
-local skyEnabled = false
-local aimbotEnabled = false
+local isSkyEnabled = false
+local isAimbotEnabled = true
 local isRunning = true
-local lockedTarget = nil
 
 -- UI Setup
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BIGNICKOZZZ_GUI"
+screenGui.Name = "BIGNICKOZZZ_UI"
 screenGui.ResetOnSpawn = false
 screenGui.Enabled = true
 screenGui.Parent = lp:WaitForChild("PlayerGui")
 
-local uiCorner = Instance.new("UICorner")
-local function createButton(text)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.Text = text
-    uiCorner:Clone().Parent = btn
-    return btn
-end
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 350, 0, 300)
+frame.Position = UDim2.new(0.5, -175, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 220)
-mainFrame.Position = UDim2.new(0.5, -130, 0.5, -110)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-mainFrame.Active = true
-mainFrame.Draggable = true
-uiCorner.Parent = mainFrame
-mainFrame.Parent = screenGui
+local uicorner = Instance.new("UICorner", frame)
+uicorner.CornerRadius = UDim.new(0, 12)
 
+-- Title
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
-title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 80, 255)
 title.Text = "BIGNICKOZZZ SCRIPT"
-title.Font = Enum.Font.GothamBlack
-title.TextSize = 20
-title.Parent = mainFrame
+title.Font = Enum.Font.FredokaOne
+title.TextColor3 = Color3.fromRGB(200, 100, 255)
+title.TextScaled = true
+title.Parent = frame
 
-local skyButton = createButton("Sky: Disabled")
-skyButton.Position = UDim2.new(0, 10, 0, 50)
-skyButton.Parent = mainFrame
+-- Toggle Button
+local skyToggle = Instance.new("TextButton")
+skyToggle.Size = UDim2.new(0, 320, 0, 30)
+skyToggle.Position = UDim2.new(0, 15, 0, 50)
+skyToggle.BackgroundColor3 = Color3.fromRGB(100, 0, 170)
+skyToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+skyToggle.Font = Enum.Font.GothamBold
+skyToggle.TextSize = 14
+skyToggle.Text = "Sky: Disabled"
+skyToggle.Parent = frame
 
-local aimbotButton = createButton("Aimbot: Disabled")
-aimbotButton.Position = UDim2.new(0, 10, 0, 100)
-aimbotButton.Parent = mainFrame
-
-local closeButton = createButton("Close")
-closeButton.Position = UDim2.new(0, 10, 0, 150)
-closeButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-closeButton.Parent = mainFrame
-
--- Button Logic
-skyButton.MouseButton1Click:Connect(function()
-    skyEnabled = not skyEnabled
-    skyButton.Text = skyEnabled and "Sky: Enabled" or "Sky: Disabled"
+skyToggle.MouseButton1Click:Connect(function()
+    isSkyEnabled = not isSkyEnabled
+    skyToggle.Text = isSkyEnabled and "Sky: Enabled" or "Sky: Disabled"
+    skyToggle.BackgroundColor3 = isSkyEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(100, 0, 170)
 end)
 
-aimbotButton.MouseButton1Click:Connect(function()
-    aimbotEnabled = not aimbotEnabled
-    aimbotButton.Text = aimbotEnabled and "Aimbot: Enabled" or "Aimbot: Disabled"
-end)
+-- Jump Height Slider
+local jumpLabel = Instance.new("TextLabel")
+jumpLabel.Text = "Jump Height"
+jumpLabel.Position = UDim2.new(0, 15, 0, 90)
+jumpLabel.Size = UDim2.new(0, 150, 0, 20)
+jumpLabel.BackgroundTransparency = 1
+jumpLabel.TextColor3 = Color3.new(1, 1, 1)
+jumpLabel.Font = Enum.Font.Gotham
+jumpLabel.TextSize = 14
+jumpLabel.Parent = frame
 
-closeButton.MouseButton1Click:Connect(function()
-    isRunning = false
-    screenGui:Destroy()
-end)
+local jumpSlider = Instance.new("TextBox")
+jumpSlider.Size = UDim2.new(0, 60, 0, 20)
+jumpSlider.Position = UDim2.new(0, 180, 0, 90)
+jumpSlider.Text = "50"
+jumpSlider.TextColor3 = Color3.new(1,1,1)
+jumpSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+jumpSlider.Font = Enum.Font.Gotham
+jumpSlider.TextSize = 14
+jumpSlider.ClearTextOnFocus = false
+jumpSlider.Parent = frame
 
--- Toggle UI
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.M then
-        screenGui.Enabled = not screenGui.Enabled
+jumpSlider.FocusLost:Connect(function()
+    local val = tonumber(jumpSlider.Text)
+    if val then
+        hum.UseJumpPower = true
+        hum.JumpPower = val
     end
 end)
 
--- Sky Bypass Logic
-local function isValidSkyPosition(pos)
-    local region = Region3.new(pos - Vector3.new(1, 1, 1), pos + Vector3.new(1, 1, 1))
-    local parts = Workspace:FindPartsInRegion3(region, nil, math.huge)
-    return #parts == 0
-end
+-- Walk Speed Slider
+local speedLabel = jumpLabel:Clone()
+speedLabel.Text = "Walk Speed"
+speedLabel.Position = UDim2.new(0, 15, 0, 120)
+speedLabel.Parent = frame
 
-task.spawn(function()
-    while isRunning do
-        task.wait(0.2)
-        if not skyEnabled or not hum or hum.Health > 25 then continue end
+local speedSlider = jumpSlider:Clone()
+speedSlider.Position = UDim2.new(0, 180, 0, 120)
+speedSlider.Text = "16"
+speedSlider.Parent = frame
 
-        local hrp = chr:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local pos = hrp.Position
-            local newPos = Vector3.new(pos.X + math.random(-1, 1), 10, pos.Z + math.random(-1, 1))
-            if isValidSkyPosition(newPos) then
-                chr:PivotTo(CFrame.new(newPos))
-            end
-        end
+speedSlider.FocusLost:Connect(function()
+    local val = tonumber(speedSlider.Text)
+    if val then
+        hum.WalkSpeed = val
     end
 end)
 
--- Aimbot Visual Marker
-local aimMarker = Instance.new("Part")
-aimMarker.Anchored = true
-aimMarker.CanCollide = false
-aimMarker.Shape = Enum.PartType.Ball
-aimMarker.Size = Vector3.new(0.5, 0.5, 0.5)
-aimMarker.BrickColor = BrickColor.new("Royal purple")
-aimMarker.Material = Enum.Material.Neon
-aimMarker.Transparency = 0.3
-aimMarker.Name = "AimMarker"
-aimMarker.Parent = Workspace
+-- Aimbot ESP Circle
+local currentTarget = nil
+local aimCircle = Drawing.new("Circle")
+aimCircle.Color = Color3.fromRGB(200, 0, 255)
+aimCircle.Thickness = 2
+aimCircle.Radius = 6
+aimCircle.Filled = true
 
--- Get Closest Player
-local function getClosestPlayer()
-    local closest, distance = nil, math.huge
+-- Closest player finder
+local function getClosestTarget()
+    local closest = nil
+    local shortest = math.huge
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= lp and plr.Character and plr.Character:FindFirstChild("Head") then
             local head = plr.Character.Head
-            local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+            local screenPos, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
             if onScreen then
-                local dist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
-                if dist < distance and dist < 150 then
-                    closest = head
-                    distance = dist
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                if dist < shortest then
+                    closest = plr
+                    shortest = dist
                 end
             end
         end
@@ -145,31 +146,36 @@ local function getClosestPlayer()
     return closest
 end
 
--- Aimbot Logic
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 and aimbotEnabled then
-        lockedTarget = getClosestPlayer()
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        lockedTarget = nil
-        aimMarker.Position = Vector3.new(0, -9999, 0)
+-- Aimbot Locking
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 and isAimbotEnabled then
+        currentTarget = getClosestTarget()
     end
 end)
 
 RunService.RenderStepped:Connect(function()
-    if lockedTarget and lockedTarget.Parent then
-        local cam = Workspace.CurrentCamera
-        local targetPos = lockedTarget.Position + Vector3.new(0, 0.1, 0)
-        cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
-        aimMarker.Position = targetPos
+    -- Aimbot Visual and Lock
+    if currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild("Head") then
+        local head = currentTarget.Character.Head
+        local screenPos, visible = Workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+        aimCircle.Visible = true
+        aimCircle.Position = Vector2.new(screenPos.X, screenPos.Y)
+    else
+        aimCircle.Visible = false
     end
 end)
 
--- Character Reset
+-- Sky Bypass Loop
+RunService.Heartbeat:Connect(function()
+    if isSkyEnabled and hum and hum.Health < 25 then
+        local newPos = hrp.Position + Vector3.new(math.random(-1, 1), 10, math.random(-1, 1))
+        chr:PivotTo(CFrame.new(newPos))
+    end
+end)
+
+-- Character Reset Handler
 lp.CharacterAdded:Connect(function(newChar)
     chr = newChar
     hum = chr:WaitForChild("Humanoid")
+    hrp = chr:WaitForChild("HumanoidRootPart")
 end)
